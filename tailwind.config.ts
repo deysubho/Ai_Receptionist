@@ -80,6 +80,10 @@ export default {
           away: "rgb(245 158 11)",
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
+          pending: "hsl(45 90% 60%)",
+          resolved: "hsl(142 70% 50%)",
+          timeout: "hsl(0 70% 60%)",
+          processing: "hsl(217 90% 60%)",
         },
       },
       fontFamily: {
