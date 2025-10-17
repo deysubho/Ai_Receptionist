@@ -48,5 +48,11 @@ export function initializeDatabase() {
   console.log("✅ Database initialized successfully");
 }
 
+// Check if database needs seeding
+export function isDatabaseEmpty(): boolean {
+  const result = db.prepare("SELECT COUNT(*) as count FROM customers").get() as { count: number };
+  return result.count === 0;
+}
+
 // Initialize on import
 initializeDatabase();

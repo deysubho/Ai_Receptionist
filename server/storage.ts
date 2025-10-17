@@ -36,25 +36,45 @@ export class SQLiteStorage implements IStorage {
   // Customer operations
   async getCustomer(id: number): Promise<Customer | undefined> {
     const stmt = db.prepare("SELECT * FROM customers WHERE id = ?");
-    return stmt.get(id) as Customer | undefined;
+    const row = stmt.get(id) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+    };
   }
 
   async getCustomerByPhone(phone: string): Promise<Customer | undefined> {
     const stmt = db.prepare("SELECT * FROM customers WHERE phone = ?");
-    return stmt.get(phone) as Customer | undefined;
+    const row = stmt.get(phone) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+    };
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
     const stmt = db.prepare(
       "INSERT INTO customers (name, phone) VALUES (?, ?) RETURNING *"
     );
-    return stmt.get(customer.name, customer.phone) as Customer;
+    const row = stmt.get(customer.name, customer.phone) as any;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+    };
   }
 
   // Help Request operations
   async getHelpRequest(id: number): Promise<HelpRequest | undefined> {
     const stmt = db.prepare("SELECT * FROM help_requests WHERE id = ?");
-    return stmt.get(id) as HelpRequest | undefined;
+    const row = stmt.get(id) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+      resolvedAt: row.resolved_at ? row.resolved_at * 1000 : null,
+    };
   }
 
   async getHelpRequestWithCustomer(id: number): Promise<HelpRequestWithCustomer | undefined> {
@@ -65,7 +85,7 @@ export class SQLiteStorage implements IStorage {
           'id', c.id,
           'name', c.name,
           'phone', c.phone,
-          'createdAt', c.created_at
+          'createdAt', c.created_at * 1000
         ) as customer
       FROM help_requests hr
       JOIN customers c ON hr.customer_id = c.id
@@ -76,6 +96,8 @@ export class SQLiteStorage implements IStorage {
     
     return {
       ...row,
+      createdAt: row.created_at * 1000,
+      resolvedAt: row.resolved_at ? row.resolved_at * 1000 : null,
       customer: JSON.parse(row.customer),
     } as HelpRequestWithCustomer;
   }
@@ -88,7 +110,7 @@ export class SQLiteStorage implements IStorage {
           'id', c.id,
           'name', c.name,
           'phone', c.phone,
-          'createdAt', c.created_at
+          'createdAt', c.created_at * 1000
         ) as customer
       FROM help_requests hr
       JOIN customers c ON hr.customer_id = c.id
@@ -98,6 +120,8 @@ export class SQLiteStorage implements IStorage {
     
     return rows.map(row => ({
       ...row,
+      createdAt: row.created_at * 1000,
+      resolvedAt: row.resolved_at ? row.resolved_at * 1000 : null,
       customer: JSON.parse(row.customer),
     })) as HelpRequestWithCustomer[];
   }
@@ -108,12 +132,17 @@ export class SQLiteStorage implements IStorage {
       VALUES (?, ?, ?, ?)
       RETURNING *
     `);
-    return stmt.get(
+    const row = stmt.get(
       request.customerId,
       request.question,
       request.status || "pending",
       request.answer || null
-    ) as HelpRequest;
+    ) as any;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+      resolvedAt: row.resolved_at ? row.resolved_at * 1000 : null,
+    };
   }
 
   async updateHelpRequest(id: number, data: UpdateHelpRequest): Promise<HelpRequest | undefined> {
@@ -123,7 +152,13 @@ export class SQLiteStorage implements IStorage {
       WHERE id = ?
       RETURNING *
     `);
-    return stmt.get(data.answer, id) as HelpRequest | undefined;
+    const row = stmt.get(data.answer, id) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      createdAt: row.created_at * 1000,
+      resolvedAt: row.resolved_at * 1000,
+    };
   }
 
   async updateHelpRequestStatus(id: number, status: string): Promise<void> {
@@ -138,12 +173,21 @@ export class SQLiteStorage implements IStorage {
   // Knowledge Base operations
   async getAllKnowledgeBase(): Promise<KnowledgeBaseEntry[]> {
     const stmt = db.prepare("SELECT * FROM knowledge_base ORDER BY learned_at DESC");
-    return stmt.all() as KnowledgeBaseEntry[];
+    const rows = stmt.all() as any[];
+    return rows.map(row => ({
+      ...row,
+      learnedAt: row.learned_at * 1000,
+    }));
   }
 
   async getKnowledgeBaseEntry(id: number): Promise<KnowledgeBaseEntry | undefined> {
     const stmt = db.prepare("SELECT * FROM knowledge_base WHERE id = ?");
-    return stmt.get(id) as KnowledgeBaseEntry | undefined;
+    const row = stmt.get(id) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      learnedAt: row.learned_at * 1000,
+    };
   }
 
   async searchKnowledgeBase(query: string): Promise<KnowledgeBaseEntry[]> {
@@ -154,7 +198,11 @@ export class SQLiteStorage implements IStorage {
       LIMIT 5
     `);
     const searchTerm = `%${query}%`;
-    return stmt.all(searchTerm, searchTerm) as KnowledgeBaseEntry[];
+    const rows = stmt.all(searchTerm, searchTerm) as any[];
+    return rows.map(row => ({
+      ...row,
+      learnedAt: row.learned_at * 1000,
+    }));
   }
 
   async createKnowledgeBaseEntry(entry: InsertKnowledgeBaseEntry): Promise<KnowledgeBaseEntry> {
@@ -163,7 +211,11 @@ export class SQLiteStorage implements IStorage {
       VALUES (?, ?, ?)
       RETURNING *
     `);
-    return stmt.get(entry.question, entry.answer, entry.category || null) as KnowledgeBaseEntry;
+    const row = stmt.get(entry.question, entry.answer, entry.category || null) as any;
+    return {
+      ...row,
+      learnedAt: row.learned_at * 1000,
+    };
   }
 
   async incrementUsageCount(id: number): Promise<void> {

@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { isDatabaseEmpty } from "./db";
+import { seedDatabase } from "./seed";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Seed database if empty
+  if (isDatabaseEmpty()) {
+    log("Database is empty, seeding with demo data...");
+    await seedDatabase();
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
