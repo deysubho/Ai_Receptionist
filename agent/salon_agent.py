@@ -9,6 +9,9 @@ import os
 import requests
 from typing import Annotated
 from dotenv import load_dotenv
+import os
+from dotenv import load_dotenv
+from pathlib import Path
 
 from livekit.agents import (
     Agent,
@@ -22,11 +25,14 @@ from livekit.agents import (
 from livekit.plugins import openai, silero
 
 # Load environment variables
-load_dotenv()
+# Ensure .env in same folder as script is loaded
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+print("OPENAI_API_KEY:", OPENAI_API_KEY)
 
 # Salon business knowledge
 SALON_KNOWLEDGE = """
@@ -226,9 +232,7 @@ async def entrypoint(ctx: JobContext):
     )
     
     logger.info("✅ AI Agent is now active and ready to take calls")
-    
-    # Keep the agent running
-    await session.wait_for_completion()
+
 
 
 def main():
