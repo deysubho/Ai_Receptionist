@@ -22,17 +22,18 @@ from livekit.agents import (
     cli,
     function_tool,
 )
-from livekit.plugins import openai, silero
+from livekit.plugins import google, silero
 
 # Load environment variables
 # Ensure .env in same folder as script is loaded
 env_path = Path(__file__).resolve().parent / ".env"
+print(f"Loading .env file from: {env_path}")
 load_dotenv(dotenv_path=env_path)
 
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-print("OPENAI_API_KEY:", OPENAI_API_KEY)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 # Salon business knowledge
 SALON_KNOWLEDGE = """
@@ -128,8 +129,9 @@ async def request_help(
     Request help from human supervisor when the AI doesn't know the answer.
     This will:
     1. Check the knowledge base for learned answers
-    2. If not found, escalate to supervisor
-    3. Tell the customer you'll get back to them
+    2. If not found, escalate to supervisor and wait for an answer
+    3. Once answered, the knowledge base will be updated automatically
+    4. Return the answer to the customer
     """
     
     logger.info(f"🤔 AI doesn't know: '{question}'")
@@ -168,18 +170,31 @@ async def request_help(
         
         if response.status_code == 201:
             request_data = response.json()
-            logger.info(f"✅ Help request #{request_data['id']} created")
+            request_id = request_data['id']
+            logger.info(f"✅ Help request #{request_id} created. Waiting for supervisor...")
             
+            # Poll for supervisor response
+            while True:
+                await asyncio.sleep(5) # Poll every 5 seconds
+                response_data = await check_for_supervisor_response(request_id)
+                if response_data["status"] == "resolved":
+                    logger.info(f"✅ Supervisor responded to request #{request_id}")
+                    return {
+                        "status": "resolved_by_supervisor",
+                        "answer": response_data["answer"]
+                    }
+        else:
+            logger.error(f"Failed to create help request: {response.text}")
             return {
-                "status": "escalated",
-                "request_id": request_data["id"],
-                "message": "I've forwarded your question to my supervisor. They'll get back to you shortly."
+                "status": "error",
+                "message": "Failed to create help request"
             }
+
     except Exception as e:
-        logger.error(f"Error creating help request: {e}")
+        logger.error(f"Error during help request: {e}")
         return {
             "status": "error",
-            "message": "Failed to escalate question"
+            "message": "An error occurred while escalating the question."
         }
 
 
@@ -215,12 +230,12 @@ async def entrypoint(ctx: JobContext):
         tools=[request_help],
     )
     
-    # Create agent session with OpenAI
+    # Create agent session with Google
     session = AgentSession(
         vad=silero.VAD.load(),  # Voice Activity Detection
-        stt=openai.STT(),  # Speech-to-Text
-        llm=openai.LLM(model="gpt-4o-mini"),  # Language Model
-        tts=openai.TTS(),  # Text-to-Speech
+        stt=google.STT(),  # Speech-to-Text
+        llm=google.LLM(model="gemini-2.5-flash"),  # Language Model
+        tts=google.TTS(),  # Text-to-Speech
     )
     
     # Start the session
@@ -237,8 +252,10 @@ async def entrypoint(ctx: JobContext):
 
 def main():
     """Run the LiveKit agent."""
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY environment variable is required")
+    if not GOOGLE_APPLICATION_CREDENTIALS:
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is required")
+    if not GOOGLE_API_KEY:
+        raise ValueError("GOOGLE_API_KEY environment variable is required")
     
     cli.run_app(
         WorkerOptions(
