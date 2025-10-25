@@ -40,7 +40,7 @@ A comprehensive human-in-the-loop AI voice receptionist system for Bella's Beaut
          │ (if unknown)
          ▼
 ┌─────────────────────┐
-│   Backend API       │ (Express.js)
+│   Backend API       │ (React)
 │   - SQLite DB       │
 │   - REST Endpoints  │
 └────────┬────────────┘
@@ -64,9 +64,10 @@ A comprehensive human-in-the-loop AI voice receptionist system for Bella's Beaut
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 20+
+- Typescript
 - Python 3.9+
-- OpenAI API Key
+- Gemini API Key
+- Google Application Credential
 - (Optional) LiveKit Cloud Account for actual voice calls
 
 ### 1. Clone and Install
